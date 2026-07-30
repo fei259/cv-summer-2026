@@ -1,11 +1,20 @@
 import torch
 from torch import nn
 
-from data.fashion_mnist import create_dataloaders, create_datasets
-from models.mlp import MLP
 from utils.engine import evaluate, train_one_epoch
 from pathlib import Path
 import matplotlib.pyplot as plt
+
+from data.cifar10 import (
+    create_dataloaders as create_cifar10_dataloaders,
+    create_datasets as create_cifar10_datasets,
+)
+from data.fashion_mnist import (
+    create_dataloaders as create_fashion_dataloaders,
+    create_datasets as create_fashion_datasets,
+)
+from models.mlp import MLP
+from models.simple_cnn import SimpleCNN
 
 
 def main():
@@ -24,16 +33,32 @@ def main():
     print("使用设备：",device)
 
     # TODO 3：创建 Dataset 和 DataLoader
-    train_dataset,test_dataset=create_datasets()
-
-    train_dataloader,test_dataloader=create_dataloaders(
-        train_dataset,
-        test_dataset,
-        batch_size=64
-    )
-
     # TODO 4：创建模型、损失函数和优化器
-    model=MLP().to(device)
+    experiment_name="cifar10"
+
+    if experiment_name=="fashion":
+        train_dataset,test_dataset=create_fashion_datasets()
+
+        train_dataloader,test_dataloader=create_fashion_dataloaders(
+            train_dataset,
+            test_dataset,
+            batch_size=64
+        )
+
+        model=MLP().to(device)
+    elif experiment_name=="cifar10":
+        train_dataset,test_dataset=create_cifar10_datasets()
+
+        train_dataloader,test_dataloader=create_cifar10_dataloaders(
+            train_dataset,
+            test_dataset,
+            batch_size=64
+        )
+
+        model=SimpleCNN().to(device)
+    else:
+        raise ValueError(f"不支持的实验：{experiment_name}")
+
     loss_fn=nn.CrossEntropyLoss()
 
     optimizer=torch.optim.SGD(
@@ -41,13 +66,18 @@ def main():
         lr=0.1
     )
 
-    # TODO 5：训练 3 个 epoch，并在每轮后进行验证和打印指标
-    num_epochs=3
+    # TODO 5：训练 10 个 epoch，并在每轮后进行验证和打印指标
+    num_epochs=10
 
-    results_dir = Path(__file__).resolve().parent / "results" / "fashion"
+    results_dir = (
+        Path(__file__).resolve().parent
+        / "results"
+        / experiment_name
+    )
+
     results_dir.mkdir(parents=True, exist_ok=True)
 
-    best_model_path = results_dir / "best_mlp.pth"
+    best_model_path = results_dir / "best_model.pth"
     curve_path = results_dir / "training_curves.png"
 
     train_losses = []
@@ -124,7 +154,10 @@ def main():
     print("训练曲线已保存到：", curve_path)
 
     #重新加载最佳模型
-    loaded_model = MLP().to(device)
+    if experiment_name == "fashion":
+        loaded_model = MLP().to(device)
+    else:
+        loaded_model = SimpleCNN().to(device)
 
     #从 best_model_path 指定的文件中读取模型参数，并把读取结果保存到变量 state_dict 中
     state_dict = torch.load(        #从磁盘文件中读取之前用 torch.save() 保存的对象
