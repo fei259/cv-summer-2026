@@ -1,0 +1,2 @@
+experiment_id,dataset,model,epochs,batch_size,optimizer,learning_rate,device,duration_seconds,best_epoch,best_test_loss,best_test_accuracy
+20260731_093443,cifar10,SimpleCNN,10,64,SGD,0.1,cuda,70.26,10,1.4433,0.7037

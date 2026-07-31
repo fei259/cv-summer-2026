@@ -1,9 +1,10 @@
+import time
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import torch
 from torch import nn
-
-from utils.engine import evaluate, train_one_epoch
-from pathlib import Path
-import matplotlib.pyplot as plt
 
 from data.cifar10 import (
     create_dataloaders as create_cifar10_dataloaders,
@@ -15,6 +16,8 @@ from data.fashion_mnist import (
 )
 from models.mlp import MLP
 from models.simple_cnn import SimpleCNN
+from utils.engine import evaluate, train_one_epoch
+from utils.logger import log_experiment
 
 
 def main():
@@ -34,41 +37,44 @@ def main():
 
     # TODO 3：创建 Dataset 和 DataLoader
     # TODO 4：创建模型、损失函数和优化器
-    experiment_name="cifar10"
+    experiment_name = "cifar10"
+    batch_size = 64
+    learning_rate = 0.1
+    num_epochs = 10
 
-    if experiment_name=="fashion":
-        train_dataset,test_dataset=create_fashion_datasets()
+    if experiment_name == "fashion":
+        train_dataset, test_dataset = create_fashion_datasets()
 
-        train_dataloader,test_dataloader=create_fashion_dataloaders(
+        train_dataloader, test_dataloader = create_fashion_dataloaders(
             train_dataset,
             test_dataset,
-            batch_size=64
+            batch_size=batch_size,
         )
 
-        model=MLP().to(device)
-    elif experiment_name=="cifar10":
-        train_dataset,test_dataset=create_cifar10_datasets()
+        model = MLP().to(device)
+        model_name = "MLP"
+    elif experiment_name == "cifar10":
+        train_dataset, test_dataset = create_cifar10_datasets()
 
-        train_dataloader,test_dataloader=create_cifar10_dataloaders(
+        train_dataloader, test_dataloader = create_cifar10_dataloaders(
             train_dataset,
             test_dataset,
-            batch_size=64
+            batch_size=batch_size,
         )
 
-        model=SimpleCNN().to(device)
+        model = SimpleCNN().to(device)
+        model_name = "SimpleCNN"
     else:
         raise ValueError(f"不支持的实验：{experiment_name}")
 
-    loss_fn=nn.CrossEntropyLoss()
+    loss_fn = nn.CrossEntropyLoss()
 
-    optimizer=torch.optim.SGD(
+    optimizer = torch.optim.SGD(
         model.parameters(),
-        lr=0.1
+        lr=learning_rate,
     )
 
-    # TODO 5：训练 10 个 epoch，并在每轮后进行验证和打印指标
-    num_epochs=10
-
+    # TODO 5：训练若干个 epoch，并在每轮后进行验证和打印指标
     results_dir = (
         Path(__file__).resolve().parent
         / "results"
@@ -86,9 +92,14 @@ def main():
     test_accuracies = []
 
     best_test_accuracy = 0.0
+    best_test_loss = float("inf")  # 表示正无穷
+    best_epoch = 0
 
-    for epoch in range(1,num_epochs+1):
-        train_loss,train_accuracy=train_one_epoch(
+    # 记录训练开始时的计时器数值，方便后面计算整个训练过程花了多长时间
+    training_start_time = time.perf_counter()
+
+    for epoch in range(1, num_epochs + 1):
+        train_loss, train_accuracy = train_one_epoch(
             model,
             train_dataloader,
             loss_fn,
@@ -110,8 +121,10 @@ def main():
 
         if test_accuracy > best_test_accuracy:
             best_test_accuracy = test_accuracy
+            best_test_loss = test_loss
+            best_epoch = epoch
 
-            #把模型当前学到的参数保存到 best_model_path 指定的文件中
+            # state_dict() 会返回模型当前的参数字典
             torch.save(model.state_dict(), best_model_path)
 
         print(
@@ -121,6 +134,9 @@ def main():
             f"test loss: {test_loss:.4f} | "
             f"test acc: {test_accuracy:.2%}"
         )
+
+    # 完整训练耗时
+    training_seconds = time.perf_counter() - training_start_time
 
     #绘制曲线
     epochs = range(1, num_epochs + 1)
@@ -180,6 +196,37 @@ def main():
         f"test loss: {loaded_test_loss:.4f} | "
         f"test acc: {loaded_test_accuracy:.2%}"
     )
+
+    experiment_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    experiments_csv_path = (
+        Path(__file__).resolve().parent
+        / "results"
+        / "experiments.csv"
+    )
+
+    record = {
+        "experiment_id": experiment_id,
+        "dataset": experiment_name,
+        "model": model_name,
+        "epochs": num_epochs,
+        "batch_size": batch_size,
+        "optimizer": type(optimizer).__name__,
+        "learning_rate": learning_rate,
+        "device": str(device),
+        "duration_seconds": round(training_seconds, 2),
+        "best_epoch": best_epoch,
+        "best_test_loss": round(best_test_loss, 4),
+        "best_test_accuracy": round(best_test_accuracy, 4),
+    }
+
+    log_experiment(
+        experiments_csv_path,
+        record,
+    )
+
+    print("实验记录已追加到：", experiments_csv_path)
+
 
 if __name__ == "__main__":
     main()
