@@ -1,2 +1,6 @@
-experiment_id,dataset,model,epochs,batch_size,optimizer,learning_rate,device,duration_seconds,best_epoch,best_test_loss,best_test_accuracy
-20260731_093443,cifar10,SimpleCNN,10,64,SGD,0.1,cuda,70.26,10,1.4433,0.7037
+experiment_id,dataset,model,epochs,batch_size,train_fraction,train_samples,optimizer,learning_rate,device,duration_seconds,best_epoch,best_train_accuracy,best_test_loss,best_test_accuracy,generalization_gap
+20260731_093443,cifar10,SimpleCNN,10,64,1.0,50000,SGD,0.1,cuda,70.26,10,0.9546,1.4433,0.7037,0.2509
+20260805_105722,cifar10,SimpleCNN,10,64,0.1,5000,SGD,0.1,cuda,19.58,9,0.7024,1.8329,0.4545,0.2479
+20260805_110218,cifar10,SimpleCNN,10,64,0.25,12500,SGD,0.1,cuda,29.2,10,0.9018,1.5435,0.617,0.2848
+20260806_181035,cifar10,SimpleCNN,10,64,0.5,25000,SGD,0.1,cuda,44.31,10,0.9457,1.5172,0.6713,0.2744
+20260806_181411,cifar10,SimpleCNN,10,64,1.0,50000,SGD,0.1,cuda,102.46,10,0.9558,1.4035,0.7151,0.2407

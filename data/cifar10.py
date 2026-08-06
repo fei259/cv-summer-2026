@@ -1,9 +1,8 @@
-from pathlib import Path
-
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-import torch
 import matplotlib.pyplot as plt
+import torch
+from pathlib import Path
+from torch.utils.data import DataLoader, Subset
+from torchvision import datasets, transforms
 
 
 DATA_ROOT = Path(__file__).resolve().parent
@@ -57,22 +56,91 @@ def create_datasets():
 
     return train_dataset, test_dataset
 
-def create_dataloaders(train_dataset,test_dataset,batch_size=64):
-    train_dataloader=DataLoader(
+def create_stratified_subset(
+    dataset,
+    fraction=1.0,
+    seed=42,
+):
+    allowed_fractions = (0.1, 0.25, 0.5, 1.0)
+
+    if fraction not in allowed_fractions:
+        raise ValueError(
+            f"fraction 必须是 {allowed_fractions} 之一"
+        )
+
+    if fraction == 1.0:
+        return dataset
+
+    # 获取所有样本的标签
+    targets = torch.tensor(dataset.targets)
+
+    # 创建随机数生成器，并固定随机种子
+    generator = torch.Generator().manual_seed(seed)
+
+    # 用来保存最终选中的样本索引
+    selected_indices = []
+
+    for class_index in range(len(dataset.classes)):
+        # 找到当前类别的所有样本索引
+        class_indices = torch.where(
+            targets == class_index
+        )[0]
+
+        # 计算当前类别需要选择的样本数量
+        sample_count = int(
+            len(class_indices) * fraction
+        )
+
+        # torch.randperm(n) 会生成从 0 到 n-1 的随机排列
+        shuffled_order = torch.randperm(
+            len(class_indices),
+            generator=generator,
+        )
+
+        # 选择前 sample_count 个索引
+        chosen_indices = class_indices[
+            shuffled_order[:sample_count]
+        ]
+
+        selected_indices.extend(
+            chosen_indices.tolist()
+        )
+
+    # 用选中的下标包装原数据集
+    return Subset(dataset, selected_indices)
+
+
+def create_dataloaders(
+    train_dataset,
+    test_dataset,
+    batch_size=64,
+    train_fraction=1.0,
+    seed=42,
+):
+    sample_train_dataset = create_stratified_subset(
         train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=0
+        fraction=train_fraction,
+        seed=seed,
     )
 
-    test_dataloader=DataLoader(
+    loader_generator = torch.Generator().manual_seed(seed)
+
+    train_dataloader = DataLoader(
+        sample_train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=0,
+        generator=loader_generator,
+    )
+
+    test_dataloader = DataLoader(
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=0
+        num_workers=0,
     )
 
-    return train_dataloader,test_dataloader
+    return train_dataloader, test_dataloader
 
 #反标准化函数
 def denormalize(image):
@@ -125,7 +193,14 @@ if __name__ == "__main__":
     train_dataloader, test_dataloader = create_dataloaders(
         train_dataset,
         test_dataset,
-        batch_size=64
+        batch_size=64,
+        train_fraction=0.1,
+        seed=42,
+    )
+
+    print(
+        "实际训练样本数：",
+        len(train_dataloader.dataset),
     )
 
     images, labels = next(iter(train_dataloader))

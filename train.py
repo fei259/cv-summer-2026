@@ -22,11 +22,13 @@ from utils.logger import log_experiment
 
 def main():
     # TODO 1：固定随机种子
-    torch.manual_seed(42)
+    random_seed = 42
+
+    torch.manual_seed(random_seed)  # 固定 CPU 的随机数生成器种子
 
     #当电脑可以使用 CUDA 显卡时，给所有 GPU 的随机数生成器设置固定种子 42
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(42)
+        torch.cuda.manual_seed_all(random_seed)
 
     # TODO 2：选择 CPU 或 GPU
     device=torch.device(
@@ -41,6 +43,7 @@ def main():
     batch_size = 64
     learning_rate = 0.1
     num_epochs = 10
+    train_fraction = 1.0
 
     if experiment_name == "fashion":
         train_dataset, test_dataset = create_fashion_datasets()
@@ -60,12 +63,19 @@ def main():
             train_dataset,
             test_dataset,
             batch_size=batch_size,
+            train_fraction=train_fraction,
+            seed=random_seed,
         )
 
         model = SimpleCNN().to(device)
         model_name = "SimpleCNN"
     else:
         raise ValueError(f"不支持的实验：{experiment_name}")
+
+    print(
+        "实际训练样本数：",
+        len(train_dataloader.dataset),
+    )
 
     loss_fn = nn.CrossEntropyLoss()
 
@@ -75,11 +85,25 @@ def main():
     )
 
     # TODO 5：训练若干个 epoch，并在每轮后进行验证和打印指标
-    results_dir = (
-        Path(__file__).resolve().parent
-        / "results"
-        / experiment_name
-    )
+    project_root = Path(__file__).resolve().parent
+
+    if experiment_name == "cifar10":
+        fraction_name = (
+            f"{int(train_fraction * 100)}pct"
+        )
+
+        results_dir = (
+            project_root
+            / "results"
+            / "sample_fraction"
+            / fraction_name
+        )
+    else:
+        results_dir = (
+            project_root
+            / "results"
+            / experiment_name
+        )
 
     results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -91,6 +115,7 @@ def main():
     train_accuracies = []
     test_accuracies = []
 
+    best_train_accuracy = 0.0
     best_test_accuracy = 0.0
     best_test_loss = float("inf")  # 表示正无穷
     best_epoch = 0
@@ -122,6 +147,7 @@ def main():
         if test_accuracy > best_test_accuracy:
             best_test_accuracy = test_accuracy
             best_test_loss = test_loss
+            best_train_accuracy = train_accuracy
             best_epoch = epoch
 
             # state_dict() 会返回模型当前的参数字典
@@ -218,6 +244,20 @@ def main():
         "best_epoch": best_epoch,
         "best_test_loss": round(best_test_loss, 4),
         "best_test_accuracy": round(best_test_accuracy, 4),
+        "train_fraction": (
+            train_fraction
+            if experiment_name == "cifar10"
+            else 1.0
+        ),
+        "train_samples": len(train_dataloader.dataset),
+        "best_train_accuracy": round(
+            best_train_accuracy,
+            4
+        ),
+        "generalization_gap": round(
+            best_train_accuracy - best_test_accuracy,
+            4
+        ),
     }
 
     log_experiment(

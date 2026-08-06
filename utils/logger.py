@@ -1,20 +1,23 @@
 import csv
 from pathlib import Path
 
-
 EXPERIMENT_FIELDS = [
     "experiment_id",
     "dataset",
     "model",
     "epochs",
     "batch_size",
+    "train_fraction",
+    "train_samples",  # 实际训练样本数
     "optimizer",
     "learning_rate",
     "device",
     "duration_seconds",
     "best_epoch",
+    "best_train_accuracy",
     "best_test_loss",
     "best_test_accuracy",
+    "generalization_gap",  # 泛化差距 = best_train_accuracy - best_test_accuracy
 ]
 
 
