@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import torch
-from pathlib import Path
 from torch.utils.data import DataLoader, Subset
 from torchvision import datasets, transforms
 
@@ -10,22 +11,94 @@ DATA_ROOT = Path(__file__).resolve().parent
 CIFAR10_MEAN = (0.4914, 0.4822, 0.4465)
 CIFAR10_STD = (0.2470, 0.2435, 0.2616)
 
+SAMPLE_OUTPUT_DIR = (
+    DATA_ROOT.parent
+    / "results"
+    / "augmentation_samples"
+)
 
-def create_datasets():
-    transform = transforms.Compose(
+
+# 数据增强函数
+def create_transforms(augmentation="none"):
+    train_steps = []
+
+    if augmentation == "none":
+        pass
+    elif augmentation == "basic":
+        # TODO 1：添加基本的数据增强方法，包括随机裁剪和随机水平翻转
+        train_steps.extend(
+            [
+                # 先填充到 40×40，再随机裁剪回 32×32
+                transforms.RandomCrop(
+                    32,
+                    padding=4,
+                ),
+
+                # 以 50% 概率水平翻转
+                transforms.RandomHorizontalFlip(
+                    p=0.5,
+                ),
+            ]
+        )
+    elif augmentation == "strong":
+        train_steps.extend(
+            [
+                transforms.RandomCrop(
+                    32,
+                    padding=4,
+                ),
+                transforms.RandomHorizontalFlip(
+                    p=0.5,
+                ),
+
+                # 随机改变颜色和光照
+                transforms.ColorJitter(
+                    brightness=0.3,
+                    contrast=0.3,
+                    saturation=0.3,
+                    hue=0.1,
+                ),
+            ]
+        )
+    else:
+        raise ValueError(
+            "augmentation 必须是 none、basic 或 strong"
+        )
+
+    train_steps.extend(
         [
-            # TODO 1：将 PIL 图片转换为 Tensor(缩放像素值，除以255)
             transforms.ToTensor(),
 
-            # TODO 2：分别对 RGB 三个通道进行标准化
-            #CIFAR10_MEAN = (R均值, G均值, B均值)
-            #CIFAR10_STD = (R标准差, G标准差, B标准差)
-            #新像素值 = (原像素值 - 通道均值) / 通道标准差,让输入数据大致围绕 0 分布，并让三个通道处于相近的数值尺度，使神经网络的梯度更新更稳定
+            # 对 RGB 三个通道进行标准化
             transforms.Normalize(
                 mean=CIFAR10_MEAN,
-                std=CIFAR10_STD
-            )
+                std=CIFAR10_STD,
+            ),
         ]
+    )
+
+    # TODO 3：将 train_steps 列表中的变换操作组合成一个 transform 对象
+    train_transform = transforms.Compose(
+        train_steps
+    )
+
+    # TODO 4：为测试集创建一个 transform 对象，只包含 ToTensor 和 Normalize
+    test_transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=CIFAR10_MEAN,
+                std=CIFAR10_STD,
+            ),
+        ]
+    )
+
+    return train_transform, test_transform
+
+
+def create_datasets(augmentation="none"):
+    train_transform, test_transform = (
+        create_transforms(augmentation)
     )
 
     train_dataset = datasets.CIFAR10(
@@ -38,7 +111,7 @@ def create_datasets():
         download=True,
 
         # TODO 5：应用 transform
-        transform=transform
+        transform=train_transform,
     )
 
     test_dataset = datasets.CIFAR10(
@@ -51,11 +124,13 @@ def create_datasets():
         download=True,
 
         # TODO 8：应用 transform
-        transform=transform
+        transform=test_transform,
     )
 
     return train_dataset, test_dataset
 
+
+# 创建分层子集，保证每个类别的样本比例与原始数据集一致
 def create_stratified_subset(
     dataset,
     fraction=1.0,
@@ -152,18 +227,24 @@ def denormalize(image):
 
     return image.clamp(0,1)     #clamp(0, 1) 会把所有数值限制在 0～1 之间
 
-#每类收集一张图片
-def show_class_samples(dataloader,class_names):
-    samples={}
+# 每类收集一张图片
+def save_class_samples(
+    dataloader,
+    class_names,
+    augmentation,
+    save_path,
+):
+    samples = {}
 
-    for images,labels in dataloader:
-        for image,label in zip(images,labels):      #zip(images, labels) 会把图片和对应的标签一一配对
-            class_index=label.item()
+    for images, labels in dataloader:
+        # zip 会把图片和对应的标签一一配对
+        for image, label in zip(images, labels):
+            class_index = label.item()
 
             # TODO 1：
             # 如果该类别尚未收集，就把 image 保存到 samples 中
             if class_index not in samples:
-                samples[class_index]=image
+                samples[class_index] = image
 
         # 如果已经收集到全部 10 个类别，就结束外层循环
         if len(samples) == 10:
@@ -171,7 +252,8 @@ def show_class_samples(dataloader,class_names):
 
     figure, axes = plt.subplots(2, 5, figsize=(12, 5))
 
-    for class_index, ax in enumerate(axes.flat):        #遍历一维的十个子对象
+    # axes.flat 将 2×5 的子图按一维顺序遍历
+    for class_index, ax in enumerate(axes.flat):
         image = samples[class_index]
 
         # 撤销标准化
@@ -184,34 +266,68 @@ def show_class_samples(dataloader,class_names):
         ax.set_title(class_names[class_index])
         ax.axis("off")
 
-    figure.tight_layout()
-    plt.show()
+    figure.suptitle(
+        f"Augmentation: {augmentation}"
+    )
+    figure.tight_layout(
+        rect=(0, 0, 1, 0.94),
+    )
+
+    save_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    figure.savefig(
+        save_path,
+        dpi=200,
+        bbox_inches="tight",
+    )
+    plt.close(figure)
+
+    print("增强样本图已保存到：", save_path)
+
 
 if __name__ == "__main__":
-    train_dataset, test_dataset = create_datasets()
-
-    train_dataloader, test_dataloader = create_dataloaders(
-        train_dataset,
-        test_dataset,
-        batch_size=64,
-        train_fraction=0.1,
-        seed=42,
+    augmentations = (
+        "none",
+        "basic",
+        "strong",
     )
 
-    print(
-        "实际训练样本数：",
-        len(train_dataloader.dataset),
-    )
+    for augmentation in augmentations:
+        torch.manual_seed(42)
 
-    images, labels = next(iter(train_dataloader))
+        train_dataset, test_dataset = create_datasets(
+            augmentation=augmentation
+        )
 
-    print("训练集 batch 数量：", len(train_dataloader))
-    print("测试集 batch 数量：", len(test_dataloader))
-    print("图片 batch 形状：", images.shape)
-    print("标签 batch 形状：", labels.shape)
-    print("前 8 个标签：", labels[:8])
+        train_dataloader, test_dataloader = (
+            create_dataloaders(
+                train_dataset,
+                test_dataset,
+                batch_size=64,
+                train_fraction=0.1,
+                seed=42,
+            )
+        )
 
-    show_class_samples(
-        train_dataloader,
-        train_dataset.classes
-    )
+        images, labels = next(
+            iter(train_dataloader)
+        )
+
+        print(
+            f"{augmentation} 图片形状：",
+            images.shape,
+        )
+        print(
+            f"{augmentation} 标签形状：",
+            labels.shape,
+        )
+
+        save_class_samples(
+            train_dataloader,
+            train_dataset.classes,
+            augmentation,
+            SAMPLE_OUTPUT_DIR
+            / f"{augmentation}.png",
+        )
