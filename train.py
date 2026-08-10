@@ -22,11 +22,12 @@ from utils.logger import log_experiment
 
 def main():
     # TODO 1：固定随机种子
-    random_seed = 42
+    random_seed = 123
+    print("随机种子：", random_seed)
 
     torch.manual_seed(random_seed)  # 固定 CPU 的随机数生成器种子
 
-    #当电脑可以使用 CUDA 显卡时，给所有 GPU 的随机数生成器设置固定种子 42
+    #当电脑可以使用 CUDA 显卡时，给所有 GPU 的随机数生成器设置固定种子
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(random_seed)
 
@@ -43,7 +44,8 @@ def main():
     batch_size = 64
     learning_rate = 0.1
     num_epochs = 10
-    train_fraction = 1.0
+    train_fraction = 0.5
+    augmentation = "none"
 
     if experiment_name == "fashion":
         train_dataset, test_dataset = create_fashion_datasets()
@@ -57,7 +59,11 @@ def main():
         model = MLP().to(device)
         model_name = "MLP"
     elif experiment_name == "cifar10":
-        train_dataset, test_dataset = create_cifar10_datasets()
+        train_dataset, test_dataset = (
+            create_cifar10_datasets(
+                augmentation=augmentation
+            )
+        )
 
         train_dataloader, test_dataloader = create_cifar10_dataloaders(
             train_dataset,
@@ -77,6 +83,9 @@ def main():
         len(train_dataloader.dataset),
     )
 
+    if experiment_name == "cifar10":
+        print("数据增强配置：", augmentation)
+
     loss_fn = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.SGD(
@@ -95,8 +104,10 @@ def main():
         results_dir = (
             project_root
             / "results"
-            / "sample_fraction"
+            / "augmentation"
             / fraction_name
+            / augmentation
+            / f"seed_{random_seed}"
         )
     else:
         results_dir = (
@@ -258,6 +269,12 @@ def main():
             best_train_accuracy - best_test_accuracy,
             4
         ),
+        "augmentation": (
+            augmentation
+            if experiment_name == "cifar10"
+            else "none"
+        ),
+        "random_seed": random_seed,
     }
 
     log_experiment(

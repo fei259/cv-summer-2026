@@ -19,6 +19,9 @@
 - 已完成 CIFAR-10 数据管道和 SimpleCNN 基线模型
 - 已实现训练指标统计、最佳模型保存和 CSV 实验记录
 - 已完成独立评估，并生成训练曲线和混淆矩阵
+- 已完成 10%、25%、50% 和 100% 有限训练数据实验
+- 已完成三档数据增强对照及两个随机种子的关键配置复验
+- 已形成有限样本与数据增强阶段报告
 
 ## 项目结构
 
@@ -90,6 +93,9 @@ python evaluate.py
 - `results/cifar10/training_curves.png`：当前训练曲线
 - `results/experiments.csv`：历次实验配置与结果
 - `results/baseline/`：提交到仓库的基线训练曲线和混淆矩阵
+- `results/sample_fraction/`：有限训练数据实验曲线与汇总图
+- `results/augmentation/`：数据增强实验曲线与汇总图
+- `notes/report_draft.md`：有限样本与数据增强阶段报告
 
 修改代码后可先执行快速语法检查：
 

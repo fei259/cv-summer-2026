@@ -9,6 +9,8 @@ EXPERIMENT_FIELDS = [
     "batch_size",
     "train_fraction",
     "train_samples",  # 实际训练样本数
+    "random_seed",  # 随机种子
+    "augmentation",  # 数据增强方法
     "optimizer",
     "learning_rate",
     "device",
