@@ -46,6 +46,7 @@ def main():
     num_epochs = 10
     train_fraction = 0.5
     augmentation = "none"
+    dropout_rate = 0.0
 
     if experiment_name == "fashion":
         train_dataset, test_dataset = create_fashion_datasets()
@@ -73,7 +74,10 @@ def main():
             seed=random_seed,
         )
 
-        model = SimpleCNN().to(device)
+        model = SimpleCNN(
+            dropout_rate=dropout_rate,
+        ).to(device)
+
         model_name = "SimpleCNN"
     else:
         raise ValueError(f"不支持的实验：{experiment_name}")
@@ -85,6 +89,7 @@ def main():
 
     if experiment_name == "cifar10":
         print("数据增强配置：", augmentation)
+        print("Dropout 概率：", dropout_rate)
 
     loss_fn = nn.CrossEntropyLoss()
 
@@ -101,12 +106,16 @@ def main():
             f"{int(train_fraction * 100)}pct"
         )
 
+        #把 dropout_rate 转换为字符串，并把小数点替换为字母 p，方便在文件夹名中使用
+        dropout_name = str(dropout_rate).replace(".", "p")
+
         results_dir = (
             project_root
             / "results"
-            / "augmentation"
+            / "regularization"
             / fraction_name
             / augmentation
+            / f"dropout_{dropout_name}"
             / f"seed_{random_seed}"
         )
     else:
@@ -210,7 +219,9 @@ def main():
     if experiment_name == "fashion":
         loaded_model = MLP().to(device)
     else:
-        loaded_model = SimpleCNN().to(device)
+        loaded_model = SimpleCNN(
+            dropout_rate=dropout_rate,
+        ).to(device)
 
     #从 best_model_path 指定的文件中读取模型参数，并把读取结果保存到变量 state_dict 中
     state_dict = torch.load(        #从磁盘文件中读取之前用 torch.save() 保存的对象

@@ -3,7 +3,7 @@ from torch import nn
 
 
 class SimpleCNN(nn.Module):
-    def __init__(self, num_classes=10):
+    def __init__(self, num_classes=10, dropout_rate=0.0):
         super().__init__()
 
         self.features = nn.Sequential(      #nn.Sequential 可以把多个网络层按照顺序组合起来
@@ -54,6 +54,8 @@ class SimpleCNN(nn.Module):
             # TODO 5：ReLU
             nn.ReLU(),
 
+            nn.Dropout(p=dropout_rate),
+
             # TODO 6：128 → num_classes
             #将 128 个特征映射为各类别的得分
             nn.Linear(
@@ -71,24 +73,46 @@ class SimpleCNN(nn.Module):
 
 
 if __name__ == "__main__":
-    model = SimpleCNN()
-
+    model = SimpleCNN(dropout_rate=0.5)
     sample_images = torch.randn(4, 3, 32, 32)
-    logits = model(sample_images)
 
-    assert logits.shape == (4, 10)
+    model.train()
+    train_logits_1 = model(sample_images)
+    train_logits_2 = model(sample_images)
 
-    #用来累计模型中所有参数数量
-    total_parameters = 0
+    print(
+        "训练模式下两次输出相同：",
+        torch.allclose(train_logits_1, train_logits_2),
+    )
 
-    for name, parameter in model.named_parameters():        #model.named_parameters() 会依次返回模型中的每一组参数
-        parameter_count = parameter.numel()     #返回张量中元素的总个数
-        total_parameters += parameter_count
+    model.eval()
 
-        print(
-            name,
-            tuple(parameter.shape),
-            parameter_count
-        )
+    with torch.no_grad():
+        eval_logits_1 = model(sample_images)
+        eval_logits_2 = model(sample_images)
 
-    print("模型总参数量：", total_parameters)
+    print(
+        "测试模式下两次输出相同：",
+        torch.allclose(eval_logits_1, eval_logits_2),
+    )
+
+    print("\n观察 Dropout 的数值变化：")
+
+    dropout = nn.Dropout(p=0.5)
+
+    # 创建一个全为 1 的输入张量，大小为 10,000
+    input_values = torch.ones(10_000)
+
+    dropout.train()
+
+    # 把 input_values 输入到 dropout 层中，得到经过 Dropout 处理后的结果，并保存到 train_values
+    train_values = dropout(input_values)
+
+    print("训练模式前 20 个输出：", train_values[:20])
+    print("训练模式输出平均值：", train_values.mean().item())
+
+    dropout.eval()
+    eval_values = dropout(input_values)
+
+    print("测试模式前 20 个输出：", eval_values[:20])
+    print("测试模式输出平均值：", eval_values.mean().item())
