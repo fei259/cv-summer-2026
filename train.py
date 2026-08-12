@@ -44,9 +44,10 @@ def main():
     batch_size = 64
     learning_rate = 0.1
     num_epochs = 10
-    train_fraction = 0.5
+    train_fraction = 0.25
     augmentation = "none"
-    dropout_rate = 0.0
+    dropout_rate = 0.3
+    weight_decay = 0.0
 
     if experiment_name == "fashion":
         train_dataset, test_dataset = create_fashion_datasets()
@@ -90,12 +91,14 @@ def main():
     if experiment_name == "cifar10":
         print("数据增强配置：", augmentation)
         print("Dropout 概率：", dropout_rate)
+        print("Weight Decay：", weight_decay)
 
     loss_fn = nn.CrossEntropyLoss()
 
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=learning_rate,
+        weight_decay=weight_decay,
     )
 
     # TODO 5：训练若干个 epoch，并在每轮后进行验证和打印指标
@@ -109,6 +112,8 @@ def main():
         #把 dropout_rate 转换为字符串，并把小数点替换为字母 p，方便在文件夹名中使用
         dropout_name = str(dropout_rate).replace(".", "p")
 
+        weight_decay_name = str(weight_decay).replace(".", "p")
+
         results_dir = (
             project_root
             / "results"
@@ -116,6 +121,7 @@ def main():
             / fraction_name
             / augmentation
             / f"dropout_{dropout_name}"
+            / f"weight_decay_{weight_decay_name}"
             / f"seed_{random_seed}"
         )
     else:
@@ -259,6 +265,12 @@ def main():
         "model": model_name,
         "epochs": num_epochs,
         "batch_size": batch_size,
+        "dropout_rate": (
+            dropout_rate
+            if experiment_name == "cifar10"
+            else 0.0
+        ),
+        "weight_decay": weight_decay,
         "optimizer": type(optimizer).__name__,
         "learning_rate": learning_rate,
         "device": str(device),

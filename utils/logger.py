@@ -11,6 +11,8 @@ EXPERIMENT_FIELDS = [
     "train_samples",  # 实际训练样本数
     "random_seed",  # 随机种子
     "augmentation",  # 数据增强方法
+    "dropout_rate",
+    "weight_decay",  # 权重衰减
     "optimizer",
     "learning_rate",
     "device",
