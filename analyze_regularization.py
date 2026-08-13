@@ -8,6 +8,7 @@ CSV_PATH = PROJECT_ROOT / "results" / "experiments.csv"
 
 TARGET_WEIGHT_DECAYS = (0.0, 0.0001, 0.001)
 TARGET_DROPOUT_RATES = (0.0, 0.3, 0.5)
+TARGET_ABLATION_FRACTIONS = (0.1, 0.25)
 
 TARGET_ABLATIONS = (
     (0.0, 0.0),
@@ -109,7 +110,7 @@ def load_dropout_results(csv_path):
     return results
 
 
-def load_ablation_results(csv_path):
+def load_ablation_results(csv_path, train_fraction):
     results = {}
 
     with csv_path.open(
@@ -124,7 +125,7 @@ def load_ablation_results(csv_path):
                 continue
             if int(row["epochs"]) != 10:
                 continue
-            if float(row["train_fraction"]) != 0.25:
+            if float(row["train_fraction"]) != train_fraction:
                 continue
             if int(row["random_seed"]) != 123:
                 continue
@@ -180,8 +181,8 @@ def print_results(title, parameter_name, parameter_values, results):
         )
 
 
-def print_ablation_results(results):
-    print("Dropout + Weight Decay 组合消融")
+def print_ablation_results(train_fraction, results):
+    print(f"{train_fraction:.0%} 数据正则化组合消融")
     print(
         "Dropout\t"
         "Weight Decay\t"
@@ -209,7 +210,6 @@ def main():
         CSV_PATH
     )
     dropout_results = load_dropout_results(CSV_PATH)
-    ablation_results = load_ablation_results(CSV_PATH)
 
     print_results(
         "Weight Decay 对照实验",
@@ -229,7 +229,17 @@ def main():
 
     print()
 
-    print_ablation_results(ablation_results)
+    for train_fraction in TARGET_ABLATION_FRACTIONS:
+        ablation_results = load_ablation_results(
+            CSV_PATH,
+            train_fraction,
+        )
+
+        print()
+        print_ablation_results(
+            train_fraction,
+            ablation_results,
+        )
 
 
 if __name__ == "__main__":
