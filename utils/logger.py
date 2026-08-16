@@ -8,20 +8,22 @@ EXPERIMENT_FIELDS = [
     "epochs",
     "batch_size",
     "train_fraction",
-    "train_samples",  # 实际训练样本数
-    "random_seed",  # 随机种子
-    "augmentation",  # 数据增强方法
+    "validation_fraction",
+    "train_samples",
+    "validation_samples",
+    "random_seed",
+    "augmentation",
     "dropout_rate",
-    "weight_decay",  # 权重衰减
+    "weight_decay",
     "optimizer",
     "learning_rate",
     "device",
     "duration_seconds",
     "best_epoch",
     "best_train_accuracy",
-    "best_test_loss",
-    "best_test_accuracy",
-    "generalization_gap",  # 泛化差距 = best_train_accuracy - best_test_accuracy
+    "best_validation_loss",     # 准确率接近时辅助判断
+    "best_validation_accuracy",     # 选择候选配置的主要依据
+    "validation_gap",       # 最佳轮次的训练准确率减去验证准确率，用来观察过拟合程度
 ]
 
 

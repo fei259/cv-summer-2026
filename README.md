@@ -9,7 +9,7 @@
 - 建立规范的训练、验证和推理流程
 - 搭建 CIFAR-10 CNN 基线模型
 - 比较数据增强、Dropout 和 L2 权重衰减
-- 尝试 MixUp，并记录对照实验结果
+- 使用独立验证集选择模型轮次与实验配置
 - 保存训练曲线、混淆矩阵和实验配置
 - 形成可复现的代码仓库与实验报告
 
@@ -22,6 +22,8 @@
 - 已完成 10%、25%、50% 和 100% 有限训练数据实验
 - 已完成三档数据增强对照及两个随机种子的关键配置复验
 - 已形成有限样本与数据增强阶段报告
+- 已修正测试集参与选模的问题，并完成 25% 数据四组正式验证实验
+- 已由验证集选出 `Dropout=0.3`，随后在测试集上完成一次最终评估
 
 ## 项目结构
 
@@ -73,25 +75,25 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 
 ## 运行项目
 
-首次运行时执行训练脚本。CIFAR-10 不存在时会自动下载，训练结束后会保存最佳模型、训练曲线，并把本次实验参数和指标追加到统一 CSV：
+首次运行时执行训练脚本。CIFAR-10 不存在时会自动下载。训练期间每轮使用验证集评估，结束后保存验证准确率最高的模型和训练曲线，并把候选实验追加到验证实验 CSV：
 
 ```powershell
 python train.py
 ```
 
-训练完成后，可以单独加载最佳模型进行测试，并生成混淆矩阵：
+所有候选配置比较完成后，先按验证准确率锁定唯一配置，再单独加载其最佳模型进行一次最终测试并生成混淆矩阵：
 
 ```powershell
 python evaluate.py
 ```
 
-模型权重 `*.pth` 属于本地产物，不会提交到 Git。因此，新环境必须先运行 `train.py` 生成 `results/cifar10/best_model.pth`，才能运行 `evaluate.py`。
+模型权重 `*.pth` 属于本地产物，不会提交到 Git。因此，新环境必须先运行 `train.py` 生成对应候选配置的 checkpoint，才能运行 `evaluate.py`。
 
 主要输出位置：
 
-- `results/cifar10/best_model.pth`：本地最佳模型权重
-- `results/cifar10/training_curves.png`：当前训练曲线
-- `results/experiments.csv`：历次实验配置与结果
+- `results/formal_validation/`：按数据比例和配置保存的正式曲线与本地 checkpoint
+- `results/formal_validation_experiments.csv`：只包含训练与验证指标的候选实验记录
+- `results/formal_validation/25pct/README.md`：25% 数据正式实验结论
 - `results/baseline/`：提交到仓库的基线训练曲线和混淆矩阵
 - `results/sample_fraction/`：有限训练数据实验曲线与汇总图
 - `results/augmentation/`：数据增强实验曲线与汇总图
@@ -103,9 +105,13 @@ python evaluate.py
 python -m compileall train.py evaluate.py data models utils
 ```
 
-## CIFAR-10 基线结果
+## 25% 数据正式实验结果
 
-当前基线使用 `SimpleCNN`，在 CIFAR-10 测试集上的实验结果如下：
+固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 11,250 张训练图片与 5,000 张验证图片上比较四组配置。验证集选出的最佳配置为 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`，最佳验证准确率为 61.66%。锁定配置后在 10,000 张官方测试图片上评估一次，测试损失为 1.1086，测试准确率为 62.58%。完整对照见 [正式实验总结](results/formal_validation/25pct/README.md)。
+
+## 早期探索性 CIFAR-10 基线
+
+以下结果来自引入独立验证集之前的探索性流程，仅作为历史学习记录，不用于正式配置选择：
 
 | 配置项 | 数值 |
 | --- | --- |

@@ -114,6 +114,13 @@ def create_datasets(augmentation="none"):
         transform=train_transform,
     )
 
+    validation_dataset = datasets.CIFAR10(
+        root=DATA_ROOT,
+        train=True,
+        download=True,
+        transform=test_transform,       # 使用测试集的 transform 进行验证集的处理，不进行数据增强
+    )
+
     test_dataset = datasets.CIFAR10(
         root=DATA_ROOT,
 
@@ -127,85 +134,112 @@ def create_datasets(augmentation="none"):
         transform=test_transform,
     )
 
-    return train_dataset, test_dataset
+    return train_dataset, validation_dataset, test_dataset
 
 
-# 创建分层子集，保证每个类别的样本比例与原始数据集一致
-def create_stratified_subset(
-    dataset,
-    fraction=1.0,
+# 从同一批 CIFAR-10 官方训练数据里，先划分验证集，再从剩余数据中按比例取训练集
+def create_stratified_train_validation_subsets(
+    train_dataset,
+    validation_dataset,
+    train_fraction=1.0,
+    validation_fraction=0.1,
     seed=42,
 ):
-    allowed_fractions = (0.1, 0.25, 0.5, 1.0)
+    allowed_train_fractions = (0.1, 0.25, 0.5, 1.0)
 
-    if fraction not in allowed_fractions:
+    if train_fraction not in allowed_train_fractions:
         raise ValueError(
-            f"fraction 必须是 {allowed_fractions} 之一"
+            f"train_fraction 必须是 "
+            f"{allowed_train_fractions} 之一"
         )
 
-    if fraction == 1.0:
-        return dataset
-
-    # 获取所有样本的标签
-    targets = torch.tensor(dataset.targets)
-
-    # 创建随机数生成器，并固定随机种子
+    targets = torch.tensor(train_dataset.targets)
     generator = torch.Generator().manual_seed(seed)
 
-    # 用来保存最终选中的样本索引
-    selected_indices = []
+    train_indices = []
+    validation_indices = []
 
-    for class_index in range(len(dataset.classes)):
-        # 找到当前类别的所有样本索引
+    for class_index in range(len(train_dataset.classes)):
         class_indices = torch.where(
             targets == class_index
         )[0]
 
-        # 计算当前类别需要选择的样本数量
-        sample_count = int(
-            len(class_indices) * fraction
-        )
-
-        # torch.randperm(n) 会生成从 0 到 n-1 的随机排列
         shuffled_order = torch.randperm(
             len(class_indices),
             generator=generator,
         )
+        shuffled_indices = class_indices[shuffled_order]
 
-        # 选择前 sample_count 个索引
-        chosen_indices = class_indices[
-            shuffled_order[:sample_count]
-        ]
-
-        selected_indices.extend(
-            chosen_indices.tolist()
+        validation_count = int(
+            len(shuffled_indices) * validation_fraction
         )
 
-    # 用选中的下标包装原数据集
-    return Subset(dataset, selected_indices)
+        class_validation_indices = (
+            shuffled_indices[:validation_count]
+        )
+        remaining_indices = (
+            shuffled_indices[validation_count:]
+        )
+
+        train_count = int(
+            len(remaining_indices) * train_fraction
+        )
+        class_train_indices = remaining_indices[:train_count]
+
+        validation_indices.extend(
+            class_validation_indices.tolist()
+        )
+        train_indices.extend(
+            class_train_indices.tolist()
+        )
+
+    train_subset = Subset(
+        train_dataset,
+        train_indices,
+    )
+    validation_subset = Subset(
+        validation_dataset,
+        validation_indices,
+    )
+
+    return train_subset, validation_subset
 
 
 def create_dataloaders(
     train_dataset,
+    validation_dataset,
     test_dataset,
     batch_size=64,
     train_fraction=1.0,
+    validation_fraction=0.1,
     seed=42,
 ):
-    sample_train_dataset = create_stratified_subset(
-        train_dataset,
-        fraction=train_fraction,
-        seed=seed,
+    # 创建分层训练集和验证集子集
+    train_subset, validation_subset = (
+        create_stratified_train_validation_subsets(
+            train_dataset,
+            validation_dataset,
+            train_fraction=train_fraction,
+            validation_fraction=validation_fraction,
+            seed=seed,
+        )
     )
 
     loader_generator = torch.Generator().manual_seed(seed)
 
     train_dataloader = DataLoader(
-        sample_train_dataset,
+        train_subset,
         batch_size=batch_size,
         shuffle=True,
         num_workers=0,
         generator=loader_generator,
+    )
+
+    validation_dataloader = DataLoader(
+        validation_subset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=0,
     )
 
     test_dataloader = DataLoader(
@@ -215,7 +249,11 @@ def create_dataloaders(
         num_workers=0,
     )
 
-    return train_dataloader, test_dataloader
+    return (
+        train_dataloader,
+        validation_dataloader,
+        test_dataloader,
+    )
 
 #反标准化函数
 def denormalize(image):
@@ -297,18 +335,24 @@ if __name__ == "__main__":
     for augmentation in augmentations:
         torch.manual_seed(42)
 
-        train_dataset, test_dataset = create_datasets(
-            augmentation=augmentation
+        train_dataset, validation_dataset, test_dataset = (
+            create_datasets(
+                augmentation=augmentation
+            )
         )
 
-        train_dataloader, test_dataloader = (
-            create_dataloaders(
-                train_dataset,
-                test_dataset,
-                batch_size=64,
-                train_fraction=0.1,
-                seed=42,
-            )
+        (
+            train_dataloader,
+            validation_dataloader,
+            test_dataloader,
+        ) = create_dataloaders(
+            train_dataset,
+            validation_dataset,
+            test_dataset,
+            batch_size=64,
+            train_fraction=0.1,
+            validation_fraction=0.1,
+            seed=42,
         )
 
         images, labels = next(

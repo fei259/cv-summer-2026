@@ -45,6 +45,7 @@ def main():
     learning_rate = 0.1
     num_epochs = 10
     train_fraction = 0.25
+    validation_fraction = 0.1
     augmentation = "none"
     dropout_rate = 0.3
     weight_decay = 0.0
@@ -61,17 +62,23 @@ def main():
         model = MLP().to(device)
         model_name = "MLP"
     elif experiment_name == "cifar10":
-        train_dataset, test_dataset = (
+        train_dataset, validation_dataset, test_dataset = (
             create_cifar10_datasets(
                 augmentation=augmentation
             )
         )
 
-        train_dataloader, test_dataloader = create_cifar10_dataloaders(
+        (
+            train_dataloader,
+            validation_dataloader,
+            _,
+        ) = create_cifar10_dataloaders(
             train_dataset,
+            validation_dataset,
             test_dataset,
             batch_size=batch_size,
             train_fraction=train_fraction,
+            validation_fraction=validation_fraction,
             seed=random_seed,
         )
 
@@ -89,6 +96,11 @@ def main():
     )
 
     if experiment_name == "cifar10":
+        print(
+            "验证样本数：",
+            len(validation_dataloader.dataset),
+        )
+
         print("数据增强配置：", augmentation)
         print("Dropout 概率：", dropout_rate)
         print("Weight Decay：", weight_decay)
@@ -117,7 +129,7 @@ def main():
         results_dir = (
             project_root
             / "results"
-            / "regularization"
+            / "formal_validation"
             / fraction_name
             / augmentation
             / f"dropout_{dropout_name}"
@@ -137,13 +149,13 @@ def main():
     curve_path = results_dir / "training_curves.png"
 
     train_losses = []
-    test_losses = []
+    validation_losses = []
     train_accuracies = []
-    test_accuracies = []
+    validation_accuracies = []
 
     best_train_accuracy = 0.0
-    best_test_accuracy = 0.0
-    best_test_loss = float("inf")  # 表示正无穷
+    best_validation_accuracy = 0.0
+    best_validation_loss = float("inf")
     best_epoch = 0
 
     # 记录训练开始时的计时器数值，方便后面计算整个训练过程花了多长时间
@@ -158,33 +170,32 @@ def main():
             device
         )
 
-        test_loss, test_accuracy = evaluate(
+        validation_loss, validation_accuracy = evaluate(
             model,
-            test_dataloader,
+            validation_dataloader,
             loss_fn,
-            device
+            device,
         )
 
         train_losses.append(train_loss)
-        test_losses.append(test_loss)
+        validation_losses.append(validation_loss)
         train_accuracies.append(train_accuracy)
-        test_accuracies.append(test_accuracy)
+        validation_accuracies.append(validation_accuracy)
 
-        if test_accuracy > best_test_accuracy:
-            best_test_accuracy = test_accuracy
-            best_test_loss = test_loss
+        if validation_accuracy > best_validation_accuracy:
+            best_validation_accuracy = validation_accuracy
+            best_validation_loss = validation_loss
             best_train_accuracy = train_accuracy
             best_epoch = epoch
 
-            # state_dict() 会返回模型当前的参数字典
             torch.save(model.state_dict(), best_model_path)
 
         print(
             f"Epoch {epoch}/{num_epochs} | "
             f"train loss: {train_loss:.4f} | "
             f"train acc: {train_accuracy:.2%} | "
-            f"test loss: {test_loss:.4f} | "
-            f"test acc: {test_accuracy:.2%}"
+            f"val loss: {validation_loss:.4f} | "
+            f"val acc: {validation_accuracy:.2%}"
         )
 
     # 完整训练耗时
@@ -198,7 +209,7 @@ def main():
 
     #axes[0]表示左边的第一个子图对象
     axes[0].plot(epochs, train_losses, marker="o", label="Train")
-    axes[0].plot(epochs, test_losses, marker="o", label="Test")
+    axes[0].plot(epochs, validation_losses, marker="o", label="Validation")
     axes[0].set_title("Loss")
     axes[0].set_xlabel("Epoch")
     axes[0].set_ylabel("Loss")
@@ -207,7 +218,14 @@ def main():
 
     #axes[1]表示右边的第二个子图对象
     axes[1].plot(epochs, train_accuracies, marker="o", label="Train")
-    axes[1].plot(epochs, test_accuracies, marker="o", label="Test")
+
+    axes[1].plot(
+        epochs,
+        validation_accuracies,
+        marker="o",
+        label="Validation",
+    )
+
     axes[1].set_title("Accuracy")
     axes[1].set_xlabel("Epoch")
     axes[1].set_ylabel("Accuracy")
@@ -221,34 +239,11 @@ def main():
     print("最佳模型已保存到：", best_model_path)
     print("训练曲线已保存到：", curve_path)
 
-    #重新加载最佳模型
-    if experiment_name == "fashion":
-        loaded_model = MLP().to(device)
-    else:
-        loaded_model = SimpleCNN(
-            dropout_rate=dropout_rate,
-        ).to(device)
-
-    #从 best_model_path 指定的文件中读取模型参数，并把读取结果保存到变量 state_dict 中
-    state_dict = torch.load(        #从磁盘文件中读取之前用 torch.save() 保存的对象
-        best_model_path,
-        map_location=device,        #把文件中的张量加载到 device 指定的设备上
-        weights_only=True
-    )
-
-    loaded_model.load_state_dict(state_dict)
-
-    loaded_test_loss, loaded_test_accuracy = evaluate(
-        loaded_model,
-        test_dataloader,
-        loss_fn,
-        device
-    )
-
     print(
-        f"重新加载后的模型 | "
-        f"test loss: {loaded_test_loss:.4f} | "
-        f"test acc: {loaded_test_accuracy:.2%}"
+        f"最佳验证结果 | "
+        f"epoch: {best_epoch} | "
+        f"val loss: {best_validation_loss:.4f} | "
+        f"val acc: {best_validation_accuracy:.2%}"
     )
 
     experiment_id = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -256,7 +251,7 @@ def main():
     experiments_csv_path = (
         Path(__file__).resolve().parent
         / "results"
-        / "experiments.csv"
+        / "formal_validation_experiments.csv"
     )
 
     record = {
@@ -276,28 +271,37 @@ def main():
         "device": str(device),
         "duration_seconds": round(training_seconds, 2),
         "best_epoch": best_epoch,
-        "best_test_loss": round(best_test_loss, 4),
-        "best_test_accuracy": round(best_test_accuracy, 4),
+        "best_validation_loss": round(best_validation_loss, 4),
+        "best_validation_accuracy": round(best_validation_accuracy, 4),
         "train_fraction": (
             train_fraction
             if experiment_name == "cifar10"
             else 1.0
         ),
         "train_samples": len(train_dataloader.dataset),
+        "validation_fraction": validation_fraction,
+        "validation_samples": (
+            len(validation_dataloader.dataset)
+            if experiment_name == "cifar10"
+            else 0
+        ),
+
         "best_train_accuracy": round(
             best_train_accuracy,
             4
         ),
-        "generalization_gap": round(
-            best_train_accuracy - best_test_accuracy,
-            4
-        ),
+
         "augmentation": (
             augmentation
             if experiment_name == "cifar10"
             else "none"
         ),
         "random_seed": random_seed,
+
+        "validation_gap": round(
+            best_train_accuracy - best_validation_accuracy,
+            4,
+        ),
     }
 
     log_experiment(

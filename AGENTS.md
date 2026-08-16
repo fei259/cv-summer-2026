@@ -15,7 +15,7 @@ python evaluate.py
 python -m compileall train.py evaluate.py data models utils
 ```
 
-`compileall` is the required quick syntax check. `train.py` trains the selected experiment, saves the best checkpoint and curves, and appends a row to `results/experiments.csv`. Run `evaluate.py` only when its expected checkpoint exists. For model-only checks, execute the module directly, for example `python models/simple_cnn.py`.
+`compileall` is the required quick syntax check. `train.py` trains candidate configurations, selects checkpoints with validation metrics, and appends rows to `results/formal_validation_experiments.csv`. Run `evaluate.py` only after validation has selected one configuration and its checkpoint exists; it performs the final test evaluation and creates a confusion matrix. For model-only checks, execute the module directly, for example `python models/simple_cnn.py`.
 
 ## Coding Style & Naming Conventions
 

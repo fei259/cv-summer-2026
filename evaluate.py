@@ -121,22 +121,36 @@ def main():
     print("使用设备：", device)
 
     # 这里只需要测试集，但沿用现有数据创建接口
-    train_dataset, test_dataset = create_datasets()
+    train_dataset, validation_dataset, test_dataset = (
+        create_datasets(augmentation="none")
+    )
 
-    _, test_dataloader = create_dataloaders(
+    _, _, test_dataloader = create_dataloaders(     # 这一处的两个 _ 表示训练和验证 DataLoader 在独立测试脚本中不需要使用，只保留第三个测试 DataLoader
         train_dataset,
+        validation_dataset,
         test_dataset,
         batch_size=64,
+        train_fraction=0.25,
+        validation_fraction=0.1,
+        seed=123,
     )
 
-    model = SimpleCNN().to(device)
+    model = SimpleCNN(
+        dropout_rate=0.3,
+    ).to(device)
 
-    checkpoint_path = (
+    results_dir = (
         Path(__file__).resolve().parent
         / "results"
-        / "cifar10"
-        / "best_model.pth"
+        / "formal_validation"
+        / "25pct"
+        / "none"
+        / "dropout_0p3"
+        / "weight_decay_0p0"
+        / "seed_123"
     )
+
+    checkpoint_path = results_dir / "best_model.pth"
 
     state_dict = torch.load(
         checkpoint_path,
@@ -186,13 +200,9 @@ def main():
 
     print(confusion_matrix)
 
-    baseline_dir = (
-        Path(__file__).resolve().parent
-        / "results"
-        / "baseline"
+    confusion_matrix_path = (
+        results_dir / "confusion_matrix.png"
     )
-
-    confusion_matrix_path = baseline_dir / "confusion_matrix.png"
 
     save_confusion_matrix(
         confusion_matrix,
