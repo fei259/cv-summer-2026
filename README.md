@@ -93,7 +93,8 @@ python evaluate.py
 
 - `results/formal_validation/`：按数据比例和配置保存的正式曲线与本地 checkpoint
 - `results/formal_validation_experiments.csv`：只包含训练与验证指标的候选实验记录
-- `results/formal_validation/25pct/README.md`：25% 数据正式实验结论
+- `results/formal_validation/README.md`：正式流程、25% 选模与 100% 对照总结
+- `results/formal_test_results.csv`：配置锁定后的最终测试记录
 - `results/baseline/`：提交到仓库的基线训练曲线和混淆矩阵
 - `results/sample_fraction/`：有限训练数据实验曲线与汇总图
 - `results/augmentation/`：数据增强实验曲线与汇总图
@@ -107,7 +108,7 @@ python -m compileall train.py evaluate.py data models utils
 
 ## 25% 数据正式实验结果
 
-固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 11,250 张训练图片与 5,000 张验证图片上比较四组配置。验证集选出的最佳配置为 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`，最佳验证准确率为 61.66%。锁定配置后在 10,000 张官方测试图片上评估一次，测试损失为 1.1086，测试准确率为 62.58%。完整对照见 [正式实验总结](results/formal_validation/25pct/README.md)。
+固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 25% 训练池上由验证集选出 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`。将该配置扩展至 100% 训练池后，最终测试准确率为 70.47%；同规模无 Dropout 基线为 66.73%。完整方法与对照见 [正式实验总结](results/formal_validation/README.md)。
 
 ## 早期探索性 CIFAR-10 基线
 

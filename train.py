@@ -44,7 +44,7 @@ def main():
     batch_size = 64
     learning_rate = 0.1
     num_epochs = 10
-    train_fraction = 0.25
+    train_fraction = 1.0
     validation_fraction = 0.1
     augmentation = "none"
     dropout_rate = 0.3

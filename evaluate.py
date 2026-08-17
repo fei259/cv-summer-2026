@@ -114,6 +114,14 @@ def save_confusion_matrix(
 
 
 def main():
+    random_seed = 123
+    batch_size = 64
+    train_fraction = 1.0
+    validation_fraction = 0.1
+    augmentation = "none"
+    dropout_rate = 0.3
+    weight_decay = 0.0
+
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
@@ -122,32 +130,36 @@ def main():
 
     # 这里只需要测试集，但沿用现有数据创建接口
     train_dataset, validation_dataset, test_dataset = (
-        create_datasets(augmentation="none")
+        create_datasets(augmentation=augmentation)
     )
 
     _, _, test_dataloader = create_dataloaders(     # 这一处的两个 _ 表示训练和验证 DataLoader 在独立测试脚本中不需要使用，只保留第三个测试 DataLoader
         train_dataset,
         validation_dataset,
         test_dataset,
-        batch_size=64,
-        train_fraction=0.25,
-        validation_fraction=0.1,
-        seed=123,
+        batch_size=batch_size,
+        train_fraction=train_fraction,
+        validation_fraction=validation_fraction,
+        seed=random_seed,
     )
 
     model = SimpleCNN(
-        dropout_rate=0.3,
+        dropout_rate=dropout_rate,
     ).to(device)
+
+    fraction_name = f"{int(train_fraction * 100)}pct"
+    dropout_name = str(dropout_rate).replace(".", "p")
+    weight_decay_name = str(weight_decay).replace(".", "p")
 
     results_dir = (
         Path(__file__).resolve().parent
         / "results"
         / "formal_validation"
-        / "25pct"
-        / "none"
-        / "dropout_0p3"
-        / "weight_decay_0p0"
-        / "seed_123"
+        / fraction_name
+        / augmentation
+        / f"dropout_{dropout_name}"
+        / f"weight_decay_{weight_decay_name}"
+        / f"seed_{random_seed}"
     )
 
     checkpoint_path = results_dir / "best_model.pth"
