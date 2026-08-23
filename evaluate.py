@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -7,6 +8,31 @@ from torch import nn
 from data.cifar10 import create_dataloaders, create_datasets
 from models.simple_cnn import SimpleCNN
 from utils.engine import evaluate
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="评估 CIFAR-10 最佳模型并生成混淆矩阵"
+    )
+
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument(
+        "--train-fraction",
+        type=float,
+        choices=[0.1, 0.25, 0.5, 1.0],
+        default=1.0,
+    )
+    parser.add_argument("--validation-fraction", type=float, default=0.1)
+    parser.add_argument(
+        "--augmentation",
+        choices=["none", "basic", "strong"],
+        default="none",
+    )
+    parser.add_argument("--dropout", type=float, default=0.3)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--seed", type=int, default=123)
+
+    return parser.parse_args()
 
 
 # 统计混淆矩阵
@@ -114,13 +140,15 @@ def save_confusion_matrix(
 
 
 def main():
-    random_seed = 123
-    batch_size = 64
-    train_fraction = 1.0
-    validation_fraction = 0.1
-    augmentation = "none"
-    dropout_rate = 0.3
-    weight_decay = 0.0
+    args = parse_args()
+
+    random_seed = args.seed
+    batch_size = args.batch_size
+    train_fraction = args.train_fraction
+    validation_fraction = args.validation_fraction
+    augmentation = args.augmentation
+    dropout_rate = args.dropout
+    weight_decay = args.weight_decay
 
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"

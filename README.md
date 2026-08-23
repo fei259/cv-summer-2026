@@ -21,21 +21,27 @@
 - 已完成独立评估，并生成训练曲线和混淆矩阵
 - 已完成 10%、25%、50% 和 100% 有限训练数据实验
 - 已完成三档数据增强对照及两个随机种子的关键配置复验
-- 已形成有限样本与数据增强阶段报告
 - 已修正测试集参与选模的问题，并完成 25% 数据四组正式验证实验
-- 已由验证集选出 `Dropout=0.3`，随后在测试集上完成一次最终评估
+- 已由验证集选出 `Dropout=0.3`，并在 100% 训练池上取得 70.47% 的最终测试准确率
+- 已完成混淆矩阵、典型错分样本和类别混淆分析
+- 已形成完整的 CIFAR-10 受控实验报告
+- 已补充命令行参数、依赖文件和单图预测入口
 
 ## 项目结构
 
 ```text
 cv-summer-2026/
-├── data/          # 数据集创建与 DataLoader
-├── models/        # 神经网络模型
-├── utils/         # 训练、评估与实验日志工具
-├── notes/         # Python 和 PyTorch 学习练习
-├── results/       # 实验记录、训练曲线和混淆矩阵
-├── train.py       # 训练入口
-└── evaluate.py    # 独立评估入口
+├── configs/                 # 受控实验配置与说明
+├── data/                    # CIFAR-10/FashionMNIST 数据与 DataLoader
+├── models/                  # MLP 和 SimpleCNN 模型
+├── notes/                   # 学习记录与实验报告
+├── results/                 # 指标、曲线、混淆矩阵和错误样本
+├── utils/                   # 训练、评估和实验日志工具
+├── train.py                 # 训练与验证入口
+├── evaluate.py              # 最终测试与混淆矩阵入口
+├── predict.py               # 单张图片预测入口
+├── requirements.txt         # Python 第三方依赖
+└── README.md                # 项目说明
 ```
 
 ## 运行环境
@@ -43,7 +49,7 @@ cv-summer-2026/
 本项目当前验证环境如下：
 
 - Python 3.12.4
-- PyTorch 2.12.1
+- PyTorch 2.12.1（开发环境使用 CUDA 12.6，干净复现已验证 CPU 版）
 - torchvision 0.27.1
 - NumPy 2.5.1
 - Matplotlib 3.11.0
@@ -60,17 +66,35 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-安装项目所需的核心依赖：
+升级 `pip`：
 
 ```powershell
 python -m pip install --upgrade pip
-python -m pip install torch torchvision numpy matplotlib
 ```
+
+根据运行设备，从 PyTorch 官方仓库安装 CPU 或 CUDA 12.6 版本（二选一）：
+
+```powershell
+# CPU 复现环境
+python -m pip install torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/cpu
+
+# NVIDIA GPU 开发环境
+python -m pip install torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/cu126
+```
+
+再从官方 PyPI 安装 `requirements.txt` 中的其余依赖：
+
+```powershell
+python -m pip install -r requirements.txt --index-url https://pypi.org/simple
+```
+
+若全局 `pip` 配置使用第三方镜像，镜像可能没有同步当前锁定版本并报出 `No matching distribution found`；上面的 `--index-url` 会仅对当前命令切换到官方源。CPU 环境同样可以运行项目，但训练耗时会更长。
 
 检查 PyTorch 是否安装成功以及 CUDA 是否可用：
 
 ```powershell
 python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
+python -m pip check
 ```
 
 ## 运行项目
@@ -81,13 +105,69 @@ python -c "import torch; print(torch.__version__); print(torch.cuda.is_available
 python train.py
 ```
 
+不提供参数时使用当前正式实验的默认配置。也可以通过命令行显式指定实验参数：
+
+```powershell
+python train.py --dataset cifar10 --epochs 10 --batch-size 64 --learning-rate 0.1 --train-fraction 1.0 --validation-fraction 0.1 --augmentation none --dropout 0.3 --weight-decay 0 --seed 123
+```
+
+`--train-fraction` 只接受 `0.1`、`0.25`、`0.5` 和 `1.0`，分别对应 10%、25%、50% 和 100% 训练池；这些固定比例用于保证受控实验之间可以直接比较。
+
+查看全部训练参数：
+
+```powershell
+python train.py --help
+```
+
 所有候选配置比较完成后，先按验证准确率锁定唯一配置，再单独加载其最佳模型进行一次最终测试并生成混淆矩阵：
 
 ```powershell
 python evaluate.py
 ```
 
+评估参数必须与待加载 checkpoint 的训练配置一致。例如：
+
+```powershell
+python evaluate.py --train-fraction 1.0 --validation-fraction 0.1 --augmentation none --dropout 0.3 --weight-decay 0 --seed 123
+```
+
+查看全部评估参数：
+
+```powershell
+python evaluate.py --help
+```
+
 模型权重 `*.pth` 属于本地产物，不会提交到 Git。因此，新环境必须先运行 `train.py` 生成对应候选配置的 checkpoint，才能运行 `evaluate.py`。
+
+## 单图预测
+
+`predict.py` 会把输入图片调整为 `32×32` RGB 图片，执行与测试集一致的标准化，然后加载训练完成的 SimpleCNN checkpoint 进行预测。
+
+使用默认正式模型预测：
+
+```powershell
+python predict.py "图片完整路径"
+```
+
+例如：
+
+```powershell
+python predict.py "results\prediction_samples\test_0.png"
+```
+
+也可以显式指定 checkpoint：
+
+```powershell
+python predict.py "图片完整路径" --checkpoint "模型完整路径" --dropout 0.3
+```
+
+查看全部预测参数：
+
+```powershell
+python predict.py --help
+```
+
+模型会输出计算设备、输入 Tensor 形状、预测类别和 Softmax 置信度。置信度是模型分配给预测类别的概率，不代表预测一定正确。
 
 主要输出位置：
 
@@ -98,12 +178,12 @@ python evaluate.py
 - `results/baseline/`：提交到仓库的基线训练曲线和混淆矩阵
 - `results/sample_fraction/`：有限训练数据实验曲线与汇总图
 - `results/augmentation/`：数据增强实验曲线与汇总图
-- `notes/report_draft.md`：有限样本与数据增强阶段报告
+- `notes/report_draft.md`：CIFAR-10 受控实验完整报告
 
 修改代码后可先执行快速语法检查：
 
 ```powershell
-python -m compileall train.py evaluate.py data models utils
+python -m compileall train.py evaluate.py predict.py data models utils
 ```
 
 ## 25% 数据正式实验结果
