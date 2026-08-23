@@ -25,7 +25,7 @@ class SimpleCNN(nn.Module):
             # 最大池化：将特征图的宽和高都缩小为原来的一半，2×2范围取最大值
             nn.MaxPool2d(kernel_size=2),
 
-            # TODO 1：将 32 个通道卷积为 64 个通道
+            # 将 32 个通道卷积为 64 个通道
             # 每个卷积核包含32个独立的3×3权重切片
             nn.Conv2d(
                 in_channels=32,
@@ -34,29 +34,29 @@ class SimpleCNN(nn.Module):
                 padding=1
             ),
 
-            # TODO 2：ReLU
+            # ReLU
             #引入非线性
             nn.ReLU(),
 
-            # TODO 3：再次执行 2×2 最大池化
+            # 再次执行 2×2 最大池化
             nn.MaxPool2d(kernel_size=2)
         )
 
         self.flatten = nn.Flatten()
 
         self.classifier = nn.Sequential(
-            # TODO 4：64×8×8 → 128
+            # 将 64×8×8 特征展平映射到 128 维
             nn.Linear(
                 in_features=64 * 8 * 8,
                 out_features=128
             ),
 
-            # TODO 5：ReLU
+            # ReLU
             nn.ReLU(),
 
             nn.Dropout(p=dropout_rate),
 
-            # TODO 6：128 → num_classes
+            # 输出各类别 logits
             #将 128 个特征映射为各类别的得分
             nn.Linear(
                 in_features=128,

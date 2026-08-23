@@ -25,7 +25,7 @@ def create_transforms(augmentation="none"):
     if augmentation == "none":
         pass
     elif augmentation == "basic":
-        # TODO 1：添加基本的数据增强方法，包括随机裁剪和随机水平翻转
+        # 基本增强：随机裁剪 + 随机水平翻转
         train_steps.extend(
             [
                 # 先填充到 40×40，再随机裁剪回 32×32
@@ -77,12 +77,12 @@ def create_transforms(augmentation="none"):
         ]
     )
 
-    # TODO 3：将 train_steps 列表中的变换操作组合成一个 transform 对象
+    # 将训练变换组合成一个 transform 对象
     train_transform = transforms.Compose(
         train_steps
     )
 
-    # TODO 4：为测试集创建一个 transform 对象，只包含 ToTensor 和 Normalize
+    # 测试/验证变换：只做张量化和标准化
     test_transform = transforms.Compose(
         [
             transforms.ToTensor(),
@@ -104,13 +104,13 @@ def create_datasets(augmentation="none"):
     train_dataset = datasets.CIFAR10(
         root=DATA_ROOT,
 
-        # TODO 3：选择训练集
+        # 官方训练集
         train=True,
 
-        # TODO 4：本地不存在时自动下载
+        # 本地不存在时自动下载
         download=True,
 
-        # TODO 5：应用 transform
+        # 应用训练增强
         transform=train_transform,
     )
 
@@ -124,13 +124,13 @@ def create_datasets(augmentation="none"):
     test_dataset = datasets.CIFAR10(
         root=DATA_ROOT,
 
-        # TODO 6：选择测试集
+        # 官方测试集
         train=False,
 
-        # TODO 7：本地不存在时自动下载
+        # 本地不存在时自动下载
         download=True,
 
-        # TODO 8：应用 transform
+        # 应用测试变换
         transform=test_transform,
     )
 
@@ -257,13 +257,13 @@ def create_dataloaders(
 
 #反标准化函数
 def denormalize(image):
-    mean=torch.tensor(CIFAR10_MEAN).view(3,1,1)     #[通道数，高度，宽度]
-    std=torch.tensor(CIFAR10_STD).view(3,1,1)
+    mean = torch.tensor(CIFAR10_MEAN).view(3, 1, 1)  # (通道数, 高度, 宽度)
+    std = torch.tensor(CIFAR10_STD).view(3, 1, 1)
 
-    #反标准化
-    image=image*std+mean
+    # 反标准化
+    image = image * std + mean
 
-    return image.clamp(0,1)     #clamp(0, 1) 会把所有数值限制在 0～1 之间
+    return image.clamp(0, 1)  # 把数值限制在 0～1 之间
 
 # 每类收集一张图片
 def save_class_samples(
@@ -279,8 +279,7 @@ def save_class_samples(
         for image, label in zip(images, labels):
             class_index = label.item()
 
-            # TODO 1：
-            # 如果该类别尚未收集，就把 image 保存到 samples 中
+            # 该类别尚未收集时，保存一张样本
             if class_index not in samples:
                 samples[class_index] = image
 

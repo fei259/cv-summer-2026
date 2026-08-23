@@ -15,7 +15,7 @@ DATA_ROOT = Path(__file__).resolve().parent     #.resolve()把路径转换为规
 def create_datasets():
     transform = transforms.Compose(     #用于把多个图片处理步骤组合起来
         [
-            # TODO 1：把 PIL 图片转换为 PyTorch Tensor
+            # 把 PIL 图片转换为 PyTorch Tensor
             transforms.ToTensor()
         ]
     )
@@ -24,13 +24,13 @@ def create_datasets():
     train_dataset = datasets.FashionMNIST(
         root=DATA_ROOT,
 
-        # TODO 2：使用训练集
+        # 使用训练集
         train=True,
 
-        # TODO 3：本地不存在时自动下载
+        # 本地不存在时自动下载
         download=True,
 
-        # TODO 4：应用上面定义的 transform
+        # 应用上面定义的 transform
         transform=transform     #左边的是FashionMNIST构造函数的参数名称，右边的是前面创建的变量
     )
 
@@ -38,20 +38,20 @@ def create_datasets():
     test_dataset = datasets.FashionMNIST(
         root=DATA_ROOT,
 
-        # TODO 5：使用测试集
+        # 使用测试集
         train=False,
 
-        # TODO 6：本地不存在时自动下载
+        # 本地不存在时自动下载
         download=True,
 
-        # TODO 7：应用上面定义的 transform
+        # 应用上面定义的 transform
         transform=transform
     )
 
     return train_dataset, test_dataset
 
-def create_dataloaders(train_dataset,test_dataset,batch_size=64):
-    train_dataloader=DataLoader(
+def create_dataloaders(train_dataset, test_dataset, batch_size=64):
+    train_dataloader = DataLoader(
         train_dataset,
         batch_size=batch_size,
         shuffle=True,

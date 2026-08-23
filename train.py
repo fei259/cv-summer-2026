@@ -1,3 +1,4 @@
+import argparse
 import time
 from datetime import datetime
 from pathlib import Path
@@ -20,9 +21,44 @@ from utils.engine import evaluate, train_one_epoch
 from utils.logger import log_experiment
 
 
+# 把原本写死在训练代码里的超参数，变成可以在命令行里自由修改的参数
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="训练 FashionMNIST 或 CIFAR-10 图像分类模型"
+    )
+
+    parser.add_argument(
+        "--dataset",
+        choices=["fashion", "cifar10"],
+        default="cifar10",
+    )
+    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--batch-size", type=int, default=64)
+    parser.add_argument("--learning-rate", type=float, default=0.1)
+    parser.add_argument(
+        "--train-fraction",
+        type=float,
+        choices=[0.1, 0.25, 0.5, 1.0],
+        default=1.0,
+    )
+    parser.add_argument("--validation-fraction", type=float, default=0.1)
+    parser.add_argument(
+        "--augmentation",
+        choices=["none", "basic", "strong"],
+        default="none",
+    )
+    parser.add_argument("--dropout", type=float, default=0.3)
+    parser.add_argument("--weight-decay", type=float, default=0.0)
+    parser.add_argument("--seed", type=int, default=123)
+
+    return parser.parse_args()
+
+
 def main():
-    # TODO 1：固定随机种子
-    random_seed = 123
+    args = parse_args()
+
+    # 固定随机种子，保证实验可复现
+    random_seed = args.seed
     print("随机种子：", random_seed)
 
     torch.manual_seed(random_seed)  # 固定 CPU 的随机数生成器种子
@@ -31,24 +67,24 @@ def main():
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(random_seed)
 
-    # TODO 2：选择 CPU 或 GPU
-    device=torch.device(
+    # 选择计算设备：优先 CUDA，否则 CPU
+    device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu"
     )
 
-    print("使用设备：",device)
+    print("使用设备：", device)
 
-    # TODO 3：创建 Dataset 和 DataLoader
-    # TODO 4：创建模型、损失函数和优化器
-    experiment_name = "cifar10"
-    batch_size = 64
-    learning_rate = 0.1
-    num_epochs = 10
-    train_fraction = 1.0
-    validation_fraction = 0.1
-    augmentation = "none"
-    dropout_rate = 0.3
-    weight_decay = 0.0
+    # 创建 Dataset 和 DataLoader
+    # 创建模型、损失函数和优化器
+    experiment_name = args.dataset
+    batch_size = args.batch_size
+    learning_rate = args.learning_rate
+    num_epochs = args.epochs
+    train_fraction = args.train_fraction
+    validation_fraction = args.validation_fraction
+    augmentation = args.augmentation
+    dropout_rate = args.dropout
+    weight_decay = args.weight_decay
 
     if experiment_name == "fashion":
         train_dataset, test_dataset = create_fashion_datasets()
@@ -113,7 +149,7 @@ def main():
         weight_decay=weight_decay,
     )
 
-    # TODO 5：训练若干个 epoch，并在每轮后进行验证和打印指标
+    # 逐 epoch 训练：每轮先在训练集上更新参数，再在验证集上评估
     project_root = Path(__file__).resolve().parent
 
     if experiment_name == "cifar10":

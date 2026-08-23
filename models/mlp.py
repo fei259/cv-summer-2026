@@ -8,19 +8,19 @@ class MLP(nn.Module):       #定义一个名为 MLP 的类，继承自 nn.Module
         self.flatten = nn.Flatten()     #nn.Flatten()默认保留batch维度，并不是把整个批次展平成一个一维张量
 
         self.classifier = nn.Sequential(
-            # TODO 1：输入层到隐藏层的线性变换
+            # 输入层到隐藏层的线性变换
             nn.Linear(input_size,hidden_size),
 
-            # TODO 2：加入 ReLU 激活函数
+            # 加入 ReLU 激活函数
             nn.ReLU(),      #ReLU定义为f(x) = max(0, x)
 
-            # TODO 3：隐藏层到输出层的线性变换
+            # 隐藏层到输出层的线性变换
             nn.Linear(hidden_size,num_classes)
         )
 
     #前向传播
     def forward(self, x):
-        # TODO 4：先把图片展平，再送入 classifier
+        # 先把图片展平，再送入 classifier
         x=self.flatten(x)       #相当于调用nn.Flatten()层
         x=self.classifier(x)        #相当于调用nn.Sequential()层，将展平后的张量送入分类器
 
