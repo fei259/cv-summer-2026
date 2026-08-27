@@ -20,9 +20,9 @@
 - 已实现训练指标统计、最佳模型保存和 CSV 实验记录
 - 已完成独立评估，并生成训练曲线和混淆矩阵
 - 已完成 10%、25%、50% 和 100% 有限训练数据实验
-- 已完成三档数据增强对照及两个随机种子的关键配置复验
+- 已完成三档数据增强探索，并对最终 Dropout 对照完成三个随机种子复验
 - 已修正测试集参与选模的问题，并完成 25% 数据四组正式验证实验
-- 已由验证集选出 `Dropout=0.3`，并在 100% 训练池上取得 70.47% 的最终测试准确率
+- 已由验证集选出 `Dropout=0.3`；在 100% 训练池的三个随机种子下，最终测试准确率为 71.84% ± 1.22%，较无 Dropout 基线平均提高 3.07 ± 0.74 个百分点
 - 已完成混淆矩阵、典型错分样本和类别混淆分析
 - 已形成完整的 CIFAR-10 受控实验报告
 - 已补充命令行参数、依赖文件和单图预测入口
@@ -40,6 +40,7 @@ cv-summer-2026/
 ├── train.py                 # 训练与验证入口
 ├── evaluate.py              # 最终测试与混淆矩阵入口
 ├── predict.py               # 单张图片预测入口
+├── analyze_formal_multiseed.py  # 正式多随机种子结果汇总
 ├── requirements.txt         # Python 第三方依赖
 └── README.md                # 项目说明
 ```
@@ -186,9 +187,15 @@ python predict.py --help
 python -m compileall train.py evaluate.py predict.py data models utils
 ```
 
-## 25% 数据正式实验结果
+复算正式三随机种子对照的均值、样本标准差和逐种子提升：
 
-固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 25% 训练池上由验证集选出 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`。将该配置扩展至 100% 训练池后，最终测试准确率为 70.47%；同规模无 Dropout 基线为 66.73%。完整方法与对照见 [正式实验总结](results/formal_validation/README.md)。
+```powershell
+python analyze_formal_multiseed.py
+```
+
+## 正式实验结果
+
+固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 25% 训练池上由验证集选出 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`。将该配置扩展至 100% 训练池，并使用种子 42、123、999 与无 Dropout 基线配对复验。`Dropout=0.3` 的测试准确率为 71.84% ± 1.22%，基线为 68.77% ± 1.92%；三个种子均获得正向提升，平均提高 3.07 ± 0.74 个百分点。完整方法与对照见 [正式实验总结](results/formal_validation/README.md)。
 
 ## 早期探索性 CIFAR-10 基线
 
