@@ -1,5 +1,7 @@
 # CIFAR-10 图像分类受控实验项目
 
+公开代码：https://github.com/fei259/cv-summer-2026
+
 ## 一句话介绍
 
 基于 PyTorch 搭建两层卷积的 SimpleCNN，在 CIFAR-10 十分类任务上受控比较训练数据量、数据增强、Dropout 与 Weight Decay，并建立训练、验证选模、独立测试和错误分析相互分离的可复现实验流程。

@@ -1,5 +1,7 @@
 # CIFAR-10 项目简历表述与面试问答
 
+项目地址：https://github.com/fei259/cv-summer-2026
+
 ## 三条简历候选表述
 
 - 基于 PyTorch 搭建 CIFAR-10 图像分类实验管线，实现分层数据划分、SimpleCNN 训练与验证、最佳 checkpoint 保存、独立测试、混淆矩阵及单图推理，并通过命令行参数和依赖文件支持干净环境复现。
