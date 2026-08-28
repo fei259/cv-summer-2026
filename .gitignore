@@ -11,11 +11,33 @@ __pycache__/
 # VS Code 本地配置
 .vscode/
 
+# 本地学习材料与代理协作说明
+AGENTS.md
+notes/
+
+# 已被正式实验取代的探索性分析脚本
+analyze_augmentation.py
+analyze_regularization.py
+analyze_sample_fraction.py
+analyze_seed_repeats.py
+
 # 数据集和模型权重
 data/*
 !data/*.py
 *.pt
 *.pth
+
+# 仅在本地保留的早期探索结果
+results/augmentation/
+results/augmentation_samples/
+results/baseline/
+results/cifar10/
+results/experiments.csv
+results/fashion/
+results/regularization/
+results/sample_fraction/
+results/week1/
+results/week2/
 
 # 环境变量和系统文件
 .env

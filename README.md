@@ -1,222 +1,125 @@
-# CV Summer 2026
+# CIFAR-10 Controlled Experiments
 
-## 项目简介
+基于 PyTorch 的 CIFAR-10 图像分类实验项目，重点不在追求复杂模型或最高准确率，而在建立一套可复现的训练、验证、测试和误差分析流程。
 
-本项目是一个基于 PyTorch 的可复现计算机视觉实验项目。项目将先通过 FashionMNIST 跑通完整训练流程，再以 CIFAR-10 图像分类为核心，完成基线模型与正则化方法的对照实验。
+项目使用独立验证集选择候选配置，最终测试集仅用于一次性评估；围绕训练数据规模、数据增强、Dropout 和 Weight Decay 进行了受控实验，并对最终 Dropout 配置完成三个随机种子的配对复验。
 
-公开仓库：https://github.com/fei259/cv-summer-2026
+## 实验结论
 
-## 项目目标
+在 25% 训练池上使用验证集筛选后，选定 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`。将该配置扩展到 100% 训练池，并使用种子 42、123、999 与无 Dropout 基线进行配对比较：
 
-- 建立规范的训练、验证和推理流程
-- 搭建 CIFAR-10 CNN 基线模型
-- 比较数据增强、Dropout 和 L2 权重衰减
-- 使用独立验证集选择模型轮次与实验配置
-- 保存训练曲线、混淆矩阵和实验配置
-- 形成可复现的代码仓库与实验报告
+| 配置 | 测试准确率（均值 ± 样本标准差） |
+| --- | ---: |
+| 无 Dropout | 68.77% ± 1.92% |
+| Dropout=0.3 | **71.84% ± 1.22%** |
+| 配对提升 | **+3.07 ± 0.74 个百分点** |
 
-## 当前进展
+三个种子下 Dropout 均带来正向提升。该结论只适用于当前 SimpleCNN、优化器、学习率和训练轮数，不代表对其他模型或训练设置仍然成立。
 
-- 已使用 FashionMNIST 跑通完整训练、评估、最佳模型保存和结果绘制流程
-- 已完成 CIFAR-10 数据管道和 SimpleCNN 基线模型
-- 已实现训练指标统计、最佳模型保存和 CSV 实验记录
-- 已完成独立评估，并生成训练曲线和混淆矩阵
-- 已完成 10%、25%、50% 和 100% 有限训练数据实验
-- 已完成三档数据增强探索，并对最终 Dropout 对照完成三个随机种子复验
-- 已修正测试集参与选模的问题，并完成 25% 数据四组正式验证实验
-- 已由验证集选出 `Dropout=0.3`；在 100% 训练池的三个随机种子下，最终测试准确率为 71.84% ± 1.22%，较无 Dropout 基线平均提高 3.07 ± 0.74 个百分点
-- 已完成混淆矩阵、典型错分样本和类别混淆分析
-- 已形成完整的 CIFAR-10 受控实验报告
-- 已补充命令行参数、依赖文件和单图预测入口
+![最终模型训练与验证曲线](results/formal_validation/100pct/none/dropout_0p3/weight_decay_0p0/seed_123/training_curves.png)
+
+![最终模型混淆矩阵](results/formal_validation/100pct/none/dropout_0p3/weight_decay_0p0/seed_123/confusion_matrix.png)
+
+完整实验设计、逐种子结果和局限性见 [实验报告](docs/experiment_report.md) 与 [正式实验总结](results/formal_validation/README.md)。
+
+## 功能
+
+- CIFAR-10 / FashionMNIST 数据加载与分层训练—验证划分
+- SimpleCNN 训练、验证集选模与 checkpoint 保存
+- 独立测试集评估和混淆矩阵生成
+- 单张图片预测及 Softmax 置信度输出
+- 数据增强、Dropout、Weight Decay 和训练数据比例配置
+- CSV 实验记录、多随机种子统计和典型错分分析
 
 ## 项目结构
 
 ```text
 cv-summer-2026/
-├── configs/                 # 受控实验配置与说明
-├── data/                    # CIFAR-10/FashionMNIST 数据与 DataLoader
-├── models/                  # MLP 和 SimpleCNN 模型
-├── notes/                   # 学习记录与实验报告
-├── results/                 # 指标、曲线、混淆矩阵和错误样本
-├── utils/                   # 训练、评估和实验日志工具
-├── train.py                 # 训练与验证入口
-├── evaluate.py              # 最终测试与混淆矩阵入口
-├── predict.py               # 单张图片预测入口
-├── analyze_formal_multiseed.py  # 正式多随机种子结果汇总
-├── requirements.txt         # Python 第三方依赖
-└── README.md                # 项目说明
+├── configs/                    # 实验变量与对照设置说明
+├── data/                       # 数据集与 DataLoader
+├── docs/                       # 正式实验报告
+├── models/                     # MLP 与 SimpleCNN
+├── results/                    # 正式指标、曲线、混淆矩阵和错误样本
+├── utils/                      # 训练、评估、绘图和日志工具
+├── train.py                    # 训练与验证入口
+├── evaluate.py                 # 最终测试入口
+├── predict.py                  # 单图预测入口
+├── analyze_errors.py           # 典型错分分析
+├── analyze_formal_multiseed.py # 三随机种子统计汇总
+└── requirements.txt
 ```
-
-## 运行环境
-
-本项目当前验证环境如下：
-
-- Python 3.12.4
-- PyTorch 2.12.1（开发环境使用 CUDA 12.6，干净复现已验证 CPU 版）
-- torchvision 0.27.1
-- NumPy 2.5.1
-- Matplotlib 3.11.0
-- Windows PowerShell
-
-训练脚本会自动检测 CUDA。存在可用 NVIDIA GPU 时使用 GPU，否则回退到 CPU；使用 CPU 不影响代码正确性，但训练耗时会更长。
 
 ## 环境配置
 
-在项目根目录打开 PowerShell，创建并激活虚拟环境：
+项目在 Python 3.12、PyTorch 2.12.1 和 torchvision 0.27.1 下完成验证。训练脚本会自动选择 CUDA 或 CPU。
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-```
-
-升级 `pip`：
-
-```powershell
 python -m pip install --upgrade pip
 ```
 
-根据运行设备，从 PyTorch 官方仓库安装 CPU 或 CUDA 12.6 版本（二选一）：
+根据设备安装 PyTorch（二选一）：
 
 ```powershell
-# CPU 复现环境
+# CPU
 python -m pip install torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/cpu
 
-# NVIDIA GPU 开发环境
+# NVIDIA GPU / CUDA 12.6
 python -m pip install torch==2.12.1 torchvision==0.27.1 --index-url https://download.pytorch.org/whl/cu126
 ```
 
-再从官方 PyPI 安装 `requirements.txt` 中的其余依赖：
+安装其余依赖：
 
 ```powershell
 python -m pip install -r requirements.txt --index-url https://pypi.org/simple
-```
-
-若全局 `pip` 配置使用第三方镜像，镜像可能没有同步当前锁定版本并报出 `No matching distribution found`；上面的 `--index-url` 会仅对当前命令切换到官方源。CPU 环境同样可以运行项目，但训练耗时会更长。
-
-检查 PyTorch 是否安装成功以及 CUDA 是否可用：
-
-```powershell
-python -c "import torch; print(torch.__version__); print(torch.cuda.is_available())"
 python -m pip check
 ```
 
-## 运行项目
+## 训练、评估与预测
 
-首次运行时执行训练脚本。CIFAR-10 不存在时会自动下载。训练期间每轮使用验证集评估，结束后保存验证准确率最高的模型和训练曲线，并把候选实验追加到验证实验 CSV：
+运行默认正式配置：
 
 ```powershell
 python train.py
 ```
 
-不提供参数时使用当前正式实验的默认配置。也可以通过命令行显式指定实验参数：
+显式指定配置：
 
 ```powershell
 python train.py --dataset cifar10 --epochs 10 --batch-size 64 --learning-rate 0.1 --train-fraction 1.0 --validation-fraction 0.1 --augmentation none --dropout 0.3 --weight-decay 0 --seed 123
 ```
 
-`--train-fraction` 只接受 `0.1`、`0.25`、`0.5` 和 `1.0`，分别对应 10%、25%、50% 和 100% 训练池；这些固定比例用于保证受控实验之间可以直接比较。
-
-查看全部训练参数：
-
-```powershell
-python train.py --help
-```
-
-所有候选配置比较完成后，先按验证准确率锁定唯一配置，再单独加载其最佳模型进行一次最终测试并生成混淆矩阵：
-
-```powershell
-python evaluate.py
-```
-
-评估参数必须与待加载 checkpoint 的训练配置一致。例如：
+训练完成后，使用相同配置加载最佳 checkpoint 并执行最终测试：
 
 ```powershell
 python evaluate.py --train-fraction 1.0 --validation-fraction 0.1 --augmentation none --dropout 0.3 --weight-decay 0 --seed 123
 ```
 
-查看全部评估参数：
-
-```powershell
-python evaluate.py --help
-```
-
-模型权重 `*.pth` 属于本地产物，不会提交到 Git。因此，新环境必须先运行 `train.py` 生成对应候选配置的 checkpoint，才能运行 `evaluate.py`。
-
-## 单图预测
-
-`predict.py` 会把输入图片调整为 `32×32` RGB 图片，执行与测试集一致的标准化，然后加载训练完成的 SimpleCNN checkpoint 进行预测。
-
-使用默认正式模型预测：
-
-```powershell
-python predict.py "图片完整路径"
-```
-
-例如：
+预测单张图片：
 
 ```powershell
 python predict.py "results\prediction_samples\test_0.png"
 ```
 
-也可以显式指定 checkpoint：
+模型权重 `*.pt` / `*.pth` 不提交到仓库。新环境需要先运行训练命令生成对应 checkpoint，再执行评估或预测。
 
-```powershell
-python predict.py "图片完整路径" --checkpoint "模型完整路径" --dropout 0.3
-```
-
-查看全部预测参数：
-
-```powershell
-python predict.py --help
-```
-
-模型会输出计算设备、输入 Tensor 形状、预测类别和 Softmax 置信度。置信度是模型分配给预测类别的概率，不代表预测一定正确。
-
-主要输出位置：
-
-- `results/formal_validation/`：按数据比例和配置保存的正式曲线与本地 checkpoint
-- `results/formal_validation_experiments.csv`：只包含训练与验证指标的候选实验记录
-- `results/formal_validation/README.md`：正式流程、25% 选模与 100% 对照总结
-- `results/formal_test_results.csv`：配置锁定后的最终测试记录
-- `results/baseline/`：提交到仓库的基线训练曲线和混淆矩阵
-- `results/sample_fraction/`：有限训练数据实验曲线与汇总图
-- `results/augmentation/`：数据增强实验曲线与汇总图
-- `notes/report_draft.md`：CIFAR-10 受控实验完整报告
-
-修改代码后可先执行快速语法检查：
-
-```powershell
-python -m compileall train.py evaluate.py predict.py data models utils
-```
-
-复算正式三随机种子对照的均值、样本标准差和逐种子提升：
+## 复现实验统计
 
 ```powershell
 python analyze_formal_multiseed.py
+python analyze_errors.py
 ```
 
-## 正式实验结果
+正式候选实验记录保存在 `results/formal_validation_experiments.csv`，锁定配置后的最终测试结果保存在 `results/formal_test_results.csv`。
 
-固定 `seed=123`、10 个 epoch、SGD 和学习率 0.1，在 25% 训练池上由验证集选出 `augmentation=none`、`Dropout=0.3`、`weight_decay=0`。将该配置扩展至 100% 训练池，并使用种子 42、123、999 与无 Dropout 基线配对复验。`Dropout=0.3` 的测试准确率为 71.84% ± 1.22%，基线为 68.77% ± 1.92%；三个种子均获得正向提升，平均提高 3.07 ± 0.74 个百分点。完整方法与对照见 [正式实验总结](results/formal_validation/README.md)。
+## 快速检查
 
-## 早期探索性 CIFAR-10 基线
+```powershell
+python -m compileall train.py evaluate.py predict.py analyze_errors.py analyze_formal_multiseed.py data models utils
+git diff --check
+```
 
-以下结果来自引入独立验证集之前的探索性流程，仅作为历史学习记录，不用于正式配置选择：
+## 项目边界
 
-| 配置项 | 数值 |
-| --- | --- |
-| 训练轮数 | 10 |
-| Batch size | 64 |
-| 优化器 | SGD |
-| 学习率 | 0.1 |
-| 最佳轮次 | 10 |
-| 测试损失 | 1.4433 |
-| 测试准确率 | 70.37% |
-
-### 训练曲线
-
-![CIFAR-10 基线训练曲线](results/baseline/training_curves.png)
-
-### 混淆矩阵
-
-![CIFAR-10 基线混淆矩阵](results/baseline/confusion_matrix.png)
+本项目是面向实验方法与工程复现的学习型项目，不以刷新 CIFAR-10 最优结果为目标。当前结果主要证明了在固定 SimpleCNN 与训练设置下，规范验证流程和多随机种子复验能够比单次实验提供更可靠的结论。

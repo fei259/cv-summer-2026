@@ -4,7 +4,7 @@
 
 CIFAR-10 官方训练集先按类别分层划出 5,000 张验证图片，其余 45,000 张构成训练候选池。`train.py` 每轮只使用训练集更新参数、使用验证集选择 checkpoint；候选配置确定前不查看官方测试指标。固定配置完成后，`evaluate.py` 才在 10,000 张官方测试图片上执行最终评估。
 
-旧的 `results/experiments.csv` 来自测试集参与逐轮选模的探索性流程，只保留为学习历史；本总结只使用 `formal_validation_experiments.csv` 与 `formal_test_results.csv` 中的正式复验结果。
+本总结只使用 `formal_validation_experiments.csv` 与 `formal_test_results.csv` 中的正式复验结果；早期探索记录不属于公开成果。
 
 ## 25% 数据候选配置
 
